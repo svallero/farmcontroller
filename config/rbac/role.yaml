@@ -1,0 +1,36 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - farmcontroller.toinfn.it
+  resources:
+  - farms
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - farmcontroller.toinfn.it
+  resources:
+  - farms/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - farmcontroller.toinfn.it
+  resources:
+  - farms/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -1,0 +1,7 @@
+version: "2"
+domain: toinfn.it
+repo: farmcontroller
+resources:
+- group: farmcontroller
+  version: v1alpha1
+  kind: Farm
