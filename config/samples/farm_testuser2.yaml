@@ -5,6 +5,8 @@ metadata:
   name: jupyter-testuser2
   namespace: testuser2
   #resourceVersion: 1
+  labels:
+    spark-role: executor
 spec:
   # Add fields here
   labelKey: spark-role

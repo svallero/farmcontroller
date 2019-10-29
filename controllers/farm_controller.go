@@ -29,16 +29,16 @@ import (
 	//meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	//"k8s.io/apimachinery/pkg/runtime"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	c "sigs.k8s.io/controller-runtime/pkg/controller"
-	//"sigs.k8s.io/controller-runtime/pkg/event"
-	//"sigs.k8s.io/controller-runtime/pkg/handler"
-	//"sigs.k8s.io/controller-runtime/pkg/predicate"
-	//"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	//"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strconv"
-	//"strings"
+	"strings"
 )
 
 // FarmReconciler reconciles a Farm object
@@ -83,31 +83,10 @@ func (r *FarmReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		log.Error(err, "failed to get owned executors")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
-		//return ctrl.Result{}, ignoreNotFound(err)
 	}
-
-	//for _, pod := range podlist.Items {
-	//	log.Info(pod.Name)
-	//}
 
 	// get executor states
-	var runningPods []*core.Pod
-	var pendingPods []*core.Pod
-	var failedPods []*core.Pod
-	var otherPods []*core.Pod
-
-	for i, pod := range podlist.Items {
-		switch pod.Status.Phase {
-		case core.PodRunning:
-			runningPods = append(runningPods, &podlist.Items[i])
-		case core.PodPending:
-			pendingPods = append(pendingPods, &podlist.Items[i])
-		case core.PodFailed:
-			failedPods = append(failedPods, &podlist.Items[i])
-		default:
-			otherPods = append(otherPods, &podlist.Items[i])
-		}
-	}
+	runningPods, pendingPods, failedPods, _ := r.getExecutorStates(podlist)
 
 	log.Info("check for executors in Error state")
 	if deleted, err := r.cleanupErrorPods(ctx, log, failedPods); err != nil {
@@ -137,24 +116,27 @@ func (r *FarmReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			farm.Spec.Replicas = &replicas
 		}
 		log.Info("scaling down")
-		if scaled, err := r.scaledownExecutors(ctx, log, runningPods, replicas); err != nil {
+		if scaled, err := r.scaledownExecutors(ctx, log, runningPods, pendingPods, replicas); err != nil {
 			log.Error(err, "failed to scaledown farm")
 			return ctrl.Result{}, err
 		} else {
-			// update number of running pods
-			//podlist, err = r.getExecutors(ctx, farm.Namespace, farm.Spec.LabelKey, farm.Spec.LabelValue)
-			//if err != nil {
-			//   log.Error(err, "failed to get owned executors")
-			//    return ctrl.Result{}, client.IgnoreNotFound(err)
-			//}
-
 			// register event
 			r.Recorder.Eventf(&farm, core.EventTypeNormal, "Scaled", "Farm scaled down by "+strconv.FormatInt(int64(scaled), 10))
 		}
 
 	}
 
-	//log.Info("Running pods: " + strconv.Itoa(len(runningPods)))
+	// get owned executors again, since they might have changed during reconcile
+	log.Info("get owned executors")
+	podlist, err = r.getExecutors(ctx, farm.Namespace, farm.Spec.LabelKey, farm.Spec.LabelValue)
+	if err != nil {
+
+		log.Error(err, "failed to get owned executors")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// get executor states
+	runningPods, pendingPods, failedPods, _ = r.getExecutorStates(podlist)
 
 	// Update the farm status
 	log.Info("updating farm status")
@@ -170,58 +152,59 @@ func (r *FarmReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 	// register event
 	r.Recorder.Event(&farm, core.EventTypeNormal, "Updated", "Farm status updated")
-
-	return ctrl.Result{Requeue: true}, nil
-	//return ctrl.Result{}, nil
+	if &farm.Status.Replicas != farm.Spec.Replicas {
+		return ctrl.Result{Requeue: true}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *FarmReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Define a mapping from the object in the event to one or more
 	// objects to Reconcile
-	//mapFn := handler.ToRequestsFunc(
-	//	func(a handler.MapObject) []reconcile.Request {
-	// This will work only for Farms with name matching
-	// the first 2 strings of the Pod name
-	//		farmname := strings.Split(a.Meta.GetName(), "-")
-	//		return []reconcile.Request{
-	//			{NamespacedName: types.NamespacedName{
-	//				Name:      farmname[0] + "-" + farmname[1],
-	//				Namespace: a.Meta.GetNamespace(),
-	//			}},
-	//		}
-	//	})
+	mapFn := handler.ToRequestsFunc(
+		func(a handler.MapObject) []reconcile.Request {
+			// This will work only for Farms with name matching
+			// the first 2 strings of the Pod name
+			farmname := strings.Split(a.Meta.GetName(), "-")
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      farmname[0] + "-" + farmname[1],
+					Namespace: a.Meta.GetNamespace(),
+				}},
+			}
+		})
 
 	// Judge if an event about the object is what we want.
 	// If that is true, the event will be processed by the reconciler.
-	//p := predicate.Funcs{
-	//	UpdateFunc: func(e event.UpdateEvent) bool {
-	// The object doesn't contain a correct label,
-	// so the event will be ignored.
-	// TODO: do not hardcode label
-	//		label := "spark-role"
-	//		if _, ok := e.MetaOld.GetLabels()[label]; !ok {
-	//			return false
-	//		}
-	//		return e.ObjectOld != e.ObjectNew
-	//	},
-	//	CreateFunc: func(e event.CreateEvent) bool {
-	// TODO: do not hardcode label
-	//		label := "spark-role"
-	//		if _, ok := e.Meta.GetLabels()[label]; !ok {
-	//			return false
-	//		}
-	//		return true
-	//	},
-	//}
+	p := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// The object doesn't contain a correct label,
+			// so the event will be ignored.
+			// TODO: do not hardcode label
+			label := "spark-role"
+			if _, ok := e.MetaOld.GetLabels()[label]; !ok {
+				return false
+			}
+			return e.ObjectOld != e.ObjectNew
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			// TODO: do not hardcode label
+			label := "spark-role"
+			if _, ok := e.Meta.GetLabels()[label]; !ok {
+				return false
+			}
+			return true
+		},
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&farmcontrollerv1alpha1.Farm{}).
-		//Watches(&source.Kind{Type: &core.Pod{}},
-		//	&handler.EnqueueRequestsFromMapFunc{
-		//		ToRequests: mapFn,
-		//	}).
-		//WithEventFilter(p).
+		Watches(&source.Kind{Type: &core.Pod{}},
+			&handler.EnqueueRequestsFromMapFunc{
+				ToRequests: mapFn,
+			}).
+		WithEventFilter(p).
 		WithOptions(c.Options{MaxConcurrentReconciles: 10}).
 		Complete(r)
 }
@@ -234,19 +217,40 @@ func (r *FarmReconciler) getExecutors(ctx context.Context, namespace string, key
 	return &list, err
 }
 
-func (r *FarmReconciler) scaledownExecutors(ctx context.Context, log logr.Logger, podlist []*core.Pod, replicas int32) (int32, error) {
+func (r *FarmReconciler) getExecutorStates(podlist *core.PodList) ([]*core.Pod, []*core.Pod, []*core.Pod, []*core.Pod) {
 
-	reduce := int32(len(podlist)) - replicas
+	var runningPods []*core.Pod
+	var pendingPods []*core.Pod
+	var failedPods []*core.Pod
+	var otherPods []*core.Pod
+
+	for i, pod := range podlist.Items {
+		switch pod.Status.Phase {
+		case core.PodRunning:
+			runningPods = append(runningPods, &podlist.Items[i])
+		case core.PodPending:
+			pendingPods = append(pendingPods, &podlist.Items[i])
+		case core.PodFailed:
+			failedPods = append(failedPods, &podlist.Items[i])
+		default:
+			otherPods = append(otherPods, &podlist.Items[i])
+		}
+	}
+	return runningPods, pendingPods, failedPods, otherPods
+}
+
+func (r *FarmReconciler) scaledownExecutors(ctx context.Context, log logr.Logger, running []*core.Pod, pending []*core.Pod, replicas int32) (int32, error) {
+
+	reduce := int32(len(running)) - replicas
 	count := int32(0)
-	for _, pod := range podlist {
+	for _, pod := range running {
 		if count < reduce {
 			log.Info("Deleting pod: " + pod.Name + " in Running state")
 			//gracePeriod := int64(10)
 			//deleteOptions := &client.DeleteOptions{GracePeriodSeconds: &gracePeriod}
 			//if err := r.Client.Delete(ctx, pod, deleteOptions); err != nil {
 			if err := r.Client.Delete(ctx, pod); err != nil {
-				//log.Error(err, "failed to delete pod resource")
-				log.Error(err, "*** SARA ***")
+				log.Error(err, "failed to delete pod resource")
 				return count, err
 			}
 			count += 1
@@ -254,8 +258,18 @@ func (r *FarmReconciler) scaledownExecutors(ctx context.Context, log logr.Logger
 			break
 		}
 	}
-	log.Info("Deleted " + strconv.FormatInt(int64(count), 10) + " pods")
+	log.Info("Deleted " + strconv.FormatInt(int64(count), 10) + " running pods")
 
+	// we also delete all pending pods to make room for other farms to scale up
+	i := 0
+	for _, pod := range pending {
+		if err := r.Client.Delete(ctx, pod); err != nil {
+			log.Error(err, "failed to delete pod resource")
+		} else {
+			i++
+		}
+	}
+	log.Info("Deleted " + strconv.FormatInt(int64(i), 10) + " pending pods")
 	return count, nil
 
 }

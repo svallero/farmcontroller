@@ -9,6 +9,26 @@ rules:
 - apiGroups:
   - farmcontroller.toinfn.it
   resources:
+  - farmmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - farmcontroller.toinfn.it
+  resources:
+  - farmmanagers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - farmcontroller.toinfn.it
+  resources:
   - farms
   verbs:
   - create
