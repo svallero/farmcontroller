@@ -11,5 +11,5 @@ spec:
   # Add fields here
   labelKey: spark-role
   labelValue: executor
-  minExecutors: 30
-  replicas: 30
+  minExecutors: 20
+  replicas: 0

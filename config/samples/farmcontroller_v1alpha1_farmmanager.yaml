@@ -1,0 +1,7 @@
+apiVersion: farmcontroller.toinfn.it/v1alpha1
+kind: FarmManager
+metadata:
+  name: farmmanager-spark
+spec:
+  labelKey: spark-role
+  labelValue: executor
