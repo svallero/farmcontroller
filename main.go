@@ -73,8 +73,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.FarmManagerReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("FarmManager"),
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("FarmManager"),
+		Recorder: mgr.GetEventRecorderFor("FarmManager"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FarmManager")
 		os.Exit(1)

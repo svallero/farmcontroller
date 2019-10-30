@@ -1,15 +1,12 @@
 apiVersion: farmcontroller.toinfn.it/v1alpha1
 resourceVersion: "v1alpha1"
 kind: Farm
-#&labelKey: spark-role
-#&labelValue: executor
 metadata:
-  name: jupyter-svallero
-  namespace: svallero
-  labels:
-    #*labelKey: *labelValue
-    spark-role: executor
+  name: jupyter-testuser
+  namespace: testuser
   #resourceVersion: 1
+  labels:
+    spark-role: executor
 spec:
   # Add fields here
   labelKey: spark-role

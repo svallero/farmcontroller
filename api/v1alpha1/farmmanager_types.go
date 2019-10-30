@@ -26,16 +26,22 @@ import (
 type FarmManagerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	LabelKey   string `json:"labelKey"`
+	LabelValue string `json:"labelValue"`
 }
 
 // FarmManagerStatus defines the observed state of FarmManager
 type FarmManagerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Overquota      map[string]int32 `json:"overquota"`
+	Underquota     map[string]int32 `json:"underquota"`
+	Pending        map[string]int32 `json:"pending"`
+	ToBeScaledDown map[string]int32 `json:"tobescaleddown"`
 }
 
 // +kubebuilder:object:root=true
-
+// +kubebuilder:resource:path=farmmanagers,scope=Cluster
 // FarmManager is the Schema for the farmmanagers API
 type FarmManager struct {
 	metav1.TypeMeta   `json:",inline"`
