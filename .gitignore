@@ -22,3 +22,7 @@ bin
 *.swp
 *.swo
 *~
+
+# custom crd
+config/samples/farm_s*
+config/samples/farm_t*

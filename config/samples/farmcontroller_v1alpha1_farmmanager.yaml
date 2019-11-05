@@ -1,5 +1,5 @@
 apiVersion: farmcontroller.toinfn.it/v1alpha1
-kind: FarmManager
+kind: Farmmanager
 metadata:
   name: farmmanager-spark
 spec:

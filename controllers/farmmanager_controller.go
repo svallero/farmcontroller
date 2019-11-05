@@ -37,8 +37,8 @@ import (
 	"strings"
 )
 
-// FarmManagerReconciler reconciles a FarmManager object
-type FarmManagerReconciler struct {
+// FarmmanagerReconciler reconciles a Farmmanager object
+type FarmmanagerReconciler struct {
 	client.Client
 	Log      logr.Logger
 	Recorder record.EventRecorder
@@ -46,17 +46,18 @@ type FarmManagerReconciler struct {
 
 // +kubebuilder:rbac:groups=farmcontroller.toinfn.it,resources=farmmanagers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=farmcontroller.toinfn.it,resources=farmmanagers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
-func (r *FarmManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *FarmmanagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("farmmanager", req.NamespacedName)
 
 	// your logic here
 	// get the current farmmanager
-	log.Info("fetching FarmManager resource")
-	farmmanager := farmcontrollerv1alpha1.FarmManager{}
+	log.Info("fetching Farmmanager resource")
+	farmmanager := farmcontrollerv1alpha1.Farmmanager{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &farmmanager); err != nil {
-		log.Error(err, "failed to get FarmManager resource")
+		log.Error(err, "failed to get Farmmanager resource")
 		return ctrl.Result{}, err
 	}
 
@@ -112,7 +113,7 @@ func (r *FarmManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		// here we determine how many pods to kill for each overquota farm
 		if tot_scaledown > 0 {
 			for farm, over := range overquota {
-				tobescaleddown[farm] = (tot_scaleup * over) / tot_scaledown
+				tobescaleddown[farm] = int32(math.Ceil(float64(tot_scaleup*over) / float64(tot_scaledown)))
 			}
 		}
 	}
@@ -121,10 +122,12 @@ func (r *FarmManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	for _, farm := range farmlist.Items {
 		name := farm.Namespace + "/" + farm.Name
 		replicas := int32(0)
+		//replicas := int32(-1)
 		if scale := tobescaleddown[name]; scale > 0 {
-			replicas = farm.Status.Replicas - scale
+			replicas = farm.Status.RunningExecutors - scale
 		}
-		farm.Spec.Replicas = &replicas
+		farm.Spec.MaxExecutors = &replicas
+		log.Info("send scledown signal to farm: " + name + " = " + strconv.FormatInt(int64(replicas), 10))
 		err = r.Client.Update(ctx, &farm)
 		if err != nil {
 			log.Info("error updating farm: " + farm.Name)
@@ -140,12 +143,12 @@ func (r *FarmManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		return ctrl.Result{}, err
 	}
 	// register event
-	r.Recorder.Event(&farmmanager, core.EventTypeNormal, "Updated", "FarmManager status updated")
+	r.Recorder.Event(&farmmanager, core.EventTypeNormal, "Updated", "Farmmanager status updated")
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *FarmManagerReconciler) getFarms(ctx context.Context, key string, value string) (*farmcontrollerv1alpha1.FarmList, error) {
+func (r *FarmmanagerReconciler) getFarms(ctx context.Context, key string, value string) (*farmcontrollerv1alpha1.FarmList, error) {
 
 	list := farmcontrollerv1alpha1.FarmList{}
 	err := r.List(ctx, &list, client.MatchingLabels{key: value})
@@ -153,7 +156,7 @@ func (r *FarmManagerReconciler) getFarms(ctx context.Context, key string, value 
 	return &list, err
 }
 
-func (r *FarmManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *FarmmanagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Define a mapping from the object in the event to one or more
 	// objects to Reconcile
@@ -195,7 +198,7 @@ func (r *FarmManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&farmcontrollerv1alpha1.FarmManager{}).
+		For(&farmcontrollerv1alpha1.Farmmanager{}).
 		Watches(&source.Kind{Type: &farmcontrollerv1alpha1.Farm{}},
 			&handler.EnqueueRequestsFromMapFunc{
 				ToRequests: mapFn,

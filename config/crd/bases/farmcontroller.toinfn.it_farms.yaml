@@ -15,8 +15,8 @@ spec:
   scope: ""
   subresources:
     scale:
-      specReplicasPath: .spec.replicas
-      statusReplicasPath: .status.replicas
+      specReplicasPath: .spec.maxExecutors
+      statusReplicasPath: .status.runningExecutors
   validation:
     openAPIV3Schema:
       description: Farm is the Schema for the farms API
@@ -42,17 +42,21 @@ spec:
               type: string
             labelValue:
               type: string
+            maxExecutors:
+              format: int32
+              type: integer
             minExecutors:
               format: int32
               type: integer
-            replicas:
+            scaledownAfterNTriggers:
               format: int32
               type: integer
           required:
           - labelKey
           - labelValue
+          - maxExecutors
           - minExecutors
-          - replicas
+          - scaledownAfterNTriggers
           type: object
         status:
           description: FarmStatus defines the observed state of Farm
@@ -70,12 +74,13 @@ spec:
               format: int32
               type: integer
             pendingExecutors:
-              format: int32
-              type: integer
-            replicas:
+              description: Replicas         int32 `json:"replicas"`
               format: int32
               type: integer
             runningExecutors:
+              format: int32
+              type: integer
+            scaledownTriggered:
               format: int32
               type: integer
           required:
@@ -83,8 +88,8 @@ spec:
           - errorExecutors
           - overquota
           - pendingExecutors
-          - replicas
           - runningExecutors
+          - scaledownTriggered
           type: object
       type: object
   version: v1alpha1

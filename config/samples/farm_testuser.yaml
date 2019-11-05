@@ -12,4 +12,5 @@ spec:
   labelKey: spark-role
   labelValue: executor
   minExecutors: 20
-  replicas: 0
+  maxExecutors: 0
+  scaledownAfterNTriggers: 3

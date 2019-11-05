@@ -8,14 +8,14 @@ metadata:
 spec:
   group: farmcontroller.toinfn.it
   names:
-    kind: FarmManager
-    listKind: FarmManagerList
+    kind: Farmmanager
+    listKind: FarmmanagerList
     plural: farmmanagers
     singular: farmmanager
   scope: Cluster
   validation:
     openAPIV3Schema:
-      description: FarmManager is the Schema for the farmmanagers API
+      description: Farmmanager is the Schema for the farmmanagers API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -30,7 +30,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: FarmManagerSpec defines the desired state of FarmManager
+          description: FarmmanagerSpec defines the desired state of Farmmanager
           properties:
             labelKey:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -43,7 +43,7 @@ spec:
           - labelValue
           type: object
         status:
-          description: FarmManagerStatus defines the observed state of FarmManager
+          description: FarmmanagerStatus defines the observed state of Farmmanager
           properties:
             overquota:
               additionalProperties:

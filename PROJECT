@@ -7,4 +7,4 @@ resources:
   kind: Farm
 - group: farmcontroller
   version: v1alpha1
-  kind: FarmManager
+  kind: Farmmanager
