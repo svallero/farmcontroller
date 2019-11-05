@@ -51,8 +51,18 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Build the docker image
-docker-build: test
+docker-build-multistage: test
 	docker build . -t ${IMG}
+
+docker-build-step0:
+	docker build . -t temporary -f Dockerfile.build && \
+	docker container create --name extract temporary && \
+        docker container cp extract:/workspace/manager . && \
+	docker container rm -f extract
+        
+docker-build: test docker-build-step0
+	docker build --no-cache -t ${IMG} . && \
+	rm -rf ./manager
 
 # Push the docker image
 docker-push:

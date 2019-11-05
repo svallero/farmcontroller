@@ -58,11 +58,9 @@ var _ = BeforeSuite(func(done Done) {
 
 	var err error
 	cfg, err = testEnv.Start()
+	By("SARA: fin qui ci arriva")
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
-
-	err = farmcontrollerv1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
 
 	err = farmcontrollerv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())

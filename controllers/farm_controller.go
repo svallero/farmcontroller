@@ -51,6 +51,8 @@ type FarmReconciler struct {
 // +kubebuilder:rbac:groups=farmcontroller.toinfn.it,resources=farms,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=farmcontroller.toinfn.it,resources=farms/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=farmcontroller.toinfn.it,resources=farms/scale,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 // ignore (not requeue) NotFound errors
 func ignoreNotFound(err error) error {
@@ -107,23 +109,32 @@ func (r *FarmReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		farm.Status.Overquota = 0
 	}
 
+	// reset counter of scaling not requested
+	if *farm.Spec.MaxExecutors == int32(0) {
+		farm.Status.ScaledownTriggered = int32(0)
+	}
 	// Scaledown if requested by farm manager
-	if *farm.Spec.Replicas > int32(0) && *farm.Spec.Replicas < int32(len(runningPods)) && farm.Status.Overquota > int32(0) {
-		replicas := *farm.Spec.Replicas
-		if replicas < farm.Spec.MinExecutors {
-			log.Info("cannot scale below MinExecutors, setting desired replicas to: " + strconv.FormatInt(int64(farm.Spec.MinExecutors), 10))
-			replicas = farm.Spec.MinExecutors
-			farm.Spec.Replicas = &replicas
-		}
-		log.Info("scaling down")
-		if scaled, err := r.scaledownExecutors(ctx, log, runningPods, pendingPods, replicas); err != nil {
-			log.Error(err, "failed to scaledown farm")
-			return ctrl.Result{}, err
+	if *farm.Spec.MaxExecutors > int32(0) && *farm.Spec.MaxExecutors < int32(len(runningPods)) && farm.Status.Overquota > int32(0) {
+		farm.Status.ScaledownTriggered += 1
+		if farm.Status.ScaledownTriggered < farm.Spec.ScaledownAfterNTriggers {
+			log.Info("number of scaledown triggers not reached: not scaling")
 		} else {
-			// register event
-			r.Recorder.Eventf(&farm, core.EventTypeNormal, "Scaled", "Farm scaled down by "+strconv.FormatInt(int64(scaled), 10))
+			replicas := *farm.Spec.MaxExecutors
+			if replicas < farm.Spec.MinExecutors {
+				log.Info("cannot scale below MinExecutors, setting desired replicas to: " + strconv.FormatInt(int64(farm.Spec.MinExecutors), 10))
+				replicas = farm.Spec.MinExecutors
+				farm.Spec.MaxExecutors = &replicas
+			}
+			log.Info("scaling down")
+			if scaled, err := r.scaledownExecutors(ctx, log, runningPods, pendingPods, replicas); err != nil {
+				log.Error(err, "failed to scaledown farm")
+				return ctrl.Result{}, err
+			} else {
+				// register event
+				r.Recorder.Eventf(&farm, core.EventTypeNormal, "Scaled", "Farm scaled down by "+strconv.FormatInt(int64(scaled), 10))
+				farm.Status.ScaledownTriggered = 0
+			}
 		}
-
 	}
 
 	// get owned executors again, since they might have changed during reconcile
@@ -142,7 +153,7 @@ func (r *FarmReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	log.Info("updating farm status")
 	farm.Status.AllExecutors = int32(len(podlist.Items))
 	farm.Status.RunningExecutors = int32(len(runningPods))
-	farm.Status.Replicas = int32(len(runningPods))
+	//farm.Status.Replicas = int32(len(runningPods))
 	farm.Status.PendingExecutors = int32(len(pendingPods))
 	farm.Status.ErrorExecutors = int32(len(failedPods))
 
@@ -152,7 +163,7 @@ func (r *FarmReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 	// register event
 	r.Recorder.Event(&farm, core.EventTypeNormal, "Updated", "Farm status updated")
-	if &farm.Status.Replicas != farm.Spec.Replicas {
+	if &farm.Status.RunningExecutors != farm.Spec.MaxExecutors {
 		return ctrl.Result{Requeue: true}, nil
 	}
 	return ctrl.Result{}, nil

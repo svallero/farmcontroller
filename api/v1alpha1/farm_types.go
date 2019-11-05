@@ -26,10 +26,11 @@ import (
 type FarmSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	LabelKey     string `json:"labelKey"`
-	LabelValue   string `json:"labelValue"`
-	MinExecutors int32  `json:"minExecutors"`
-	Replicas     *int32 `json:"replicas"`
+	LabelKey                string `json:"labelKey"`
+	LabelValue              string `json:"labelValue"`
+	MinExecutors            int32  `json:"minExecutors"`
+	MaxExecutors            *int32 `json:"maxExecutors"`
+	ScaledownAfterNTriggers int32  `json:"scaledownAfterNTriggers"`
 }
 
 // FarmStatus defines the observed state of Farm
@@ -38,14 +39,15 @@ type FarmStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	AllExecutors     int32 `json:"allExecutors"`
 	RunningExecutors int32 `json:"runningExecutors"`
-	Replicas         int32 `json:"replicas"`
-	PendingExecutors int32 `json:"pendingExecutors"`
-	ErrorExecutors   int32 `json:"errorExecutors"`
-	Overquota        int32 `json:"overquota"`
+	//Replicas         int32 `json:"replicas"`
+	PendingExecutors   int32 `json:"pendingExecutors"`
+	ErrorExecutors     int32 `json:"errorExecutors"`
+	Overquota          int32 `json:"overquota"`
+	ScaledownTriggered int32 `json:"scaledownTriggered"`
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
+// +kubebuilder:subresource:scale:specpath=.spec.maxExecutors,statuspath=.status.runningExecutors
 // Farm is the Schema for the farms API
 type Farm struct {
 	metav1.TypeMeta   `json:",inline"`

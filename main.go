@@ -72,14 +72,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Farm")
 		os.Exit(1)
 	}
-	if err = (&controllers.FarmManagerReconciler{
+	if err = (&controllers.FarmmanagerReconciler{
 		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("FarmManager"),
-		Recorder: mgr.GetEventRecorderFor("FarmManager"),
+		Log:      ctrl.Log.WithName("controllers").WithName("Farmmanager"),
+		Recorder: mgr.GetEventRecorderFor("Farmmanager"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FarmManager")
+		setupLog.Error(err, "unable to create controller", "controller", "Farmmanager")
 		os.Exit(1)
 	}
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

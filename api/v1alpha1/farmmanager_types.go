@@ -22,16 +22,16 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// FarmManagerSpec defines the desired state of FarmManager
-type FarmManagerSpec struct {
+// FarmmanagerSpec defines the desired state of Farmmanager
+type FarmmanagerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	LabelKey   string `json:"labelKey"`
 	LabelValue string `json:"labelValue"`
 }
 
-// FarmManagerStatus defines the observed state of FarmManager
-type FarmManagerStatus struct {
+// FarmmanagerStatus defines the observed state of Farmmanager
+type FarmmanagerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	Overquota      map[string]int32 `json:"overquota"`
@@ -42,24 +42,24 @@ type FarmManagerStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:path=farmmanagers,scope=Cluster
-// FarmManager is the Schema for the farmmanagers API
-type FarmManager struct {
+// Farmmanager is the Schema for the farmmanagers API
+type Farmmanager struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FarmManagerSpec   `json:"spec,omitempty"`
-	Status FarmManagerStatus `json:"status,omitempty"`
+	Spec   FarmmanagerSpec   `json:"spec,omitempty"`
+	Status FarmmanagerStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// FarmManagerList contains a list of FarmManager
-type FarmManagerList struct {
+// FarmmanagerList contains a list of Farmmanager
+type FarmmanagerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []FarmManager `json:"items"`
+	Items           []Farmmanager `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&FarmManager{}, &FarmManagerList{})
+	SchemeBuilder.Register(&Farmmanager{}, &FarmmanagerList{})
 }
