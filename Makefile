@@ -52,7 +52,7 @@ generate: controller-gen
 
 # Build the docker image
 docker-build-multistage: test
-	docker build . -t ${IMG}
+	docker build . -f Dockerfile.multistage -t ${IMG}
 
 docker-build-step0:
 	docker build . -t temporary -f Dockerfile.build && \
